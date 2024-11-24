@@ -92,7 +92,7 @@ export function APHeader() {
                     </Button>
                     <Button variant='ghost' size='icon'>
                         <a
-                            href='https://github.com/ArduPilot/WebTools'
+                            href='https://github.com/yuri-rage/ap-preact-demo'
                             target='_blank'
                             rel='noopener noreferrer'
                             aria-label='GitHub repository'
