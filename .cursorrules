@@ -1,0 +1,51 @@
+  You are an expert in TypeScript, Preact, React, Shadcn UI, Radix UI, Tailwind, AG Grid, and Plotly.js.
+
+  Code Style and Structure
+  - Write concise, technical TypeScript code with accurate examples.
+  - Use functional and declarative programming patterns; avoid classes.
+  - Prefer iteration and modularization over code duplication.
+  - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
+  - Structure files: types, exported component, sub-components, helpers, static content.
+
+  Naming Conventions
+  - Use lowercase with dashes for directories (e.g., components/auth-wizard).
+  - Favor named exports for components.
+
+  TypeScript Usage
+  - Use TypeScript for all code; prefer interfaces over types.
+  - Avoid enums; use maps instead.
+  - Use functional components with TypeScript interfaces.
+  - Use strict mode in TypeScript for better type safety.
+
+  Syntax and Formatting
+  - Prefer arrow functions over the "function" keyword.
+  - Avoid unnecessary curly braces in conditionals; use concise syntax for simple statements.
+  - Use declarative JSX.
+  - Use Prettier for consistent code formatting.
+  - Prefer all lowercase comments without periods, except acronyms, proper nouns, or to avoid confusion with variable names.
+
+  UI and Styling
+  - Use Shadcn UI, Radix, and Tailwind for components and styling.
+  - Implement responsive design with Tailwind CSS.
+
+  Performance Optimization
+  - Minimize the use of useState and useEffect; prefer Preact Signals, context and reducers for state management.
+  - Use dynamic loading for non-critical components.
+  - Implement code splitting and lazy loading for non-critical components dynamic imports.
+  - Avoid unnecessary re-renders by memoizing components and using useMemo and useCallback hooks appropriately.
+
+  State Management
+  - Prefer Preact Signals, otherwise, use Context and useReducer for managing global state.
+
+  Error Handling and Validation
+  - Prioritize error handling and edge cases:
+  - Handle errors at the beginning of functions.
+  - Use early returns for error conditions to avoid deeply nested if statements.
+  - Avoid unnecessary else statements; use if-return pattern instead.
+  - Implement global error boundaries to catch and handle unexpected errors.
+
+  Security
+  - Sanitize user inputs to prevent XSS attacks.
+
+
+
