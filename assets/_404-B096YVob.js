@@ -1,1 +1,0 @@
-import{u as e}from"./index-D1FBr1Rb.js";const r=()=>e("div",{className:"flex max-w-[50rem] flex-col gap-4 p-3",children:[e("h1",{children:"Page Not Found"}),e("a",{href:"/",children:"Return to homepage"})]});export{r as NotFound,r as default};
