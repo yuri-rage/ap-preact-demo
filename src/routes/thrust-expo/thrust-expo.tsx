@@ -76,22 +76,40 @@ export const ThrustExpo = () => {
                             </div>
                             <div className='flex flex-1 flex-col'>
                                 {linearizedResult.value && (
-                                    <div className='text-sm pt-3 pl-2'>
-                                        <div className='flex flex-col gap-1'>
+                                    <div className='pl-2 pt-3 text-sm'>
+                                        <div className='flex flex-col gap-1 pb-2'>
                                             <div className='font-semibold'>Calculated Values :</div>
-                                            <div className={optimizedStdDev.value && Number(linearizedResult.value.std_deviation.toFixed(3)) <= optimizedStdDev.value 
-                                                ? 'flex gap-4 text-emerald-600 font-semibold' 
-                                                : 'flex gap-4 text-muted-foreground'
-                                            }>
-                                                <div>MOT_THST_EXPO: {params.value.MOT_THST_EXPO.toFixed(3)}</div>
-                                                <div>MOT_THST_HOVER: {hoverParams.value.MOT_THST_HOVER.toFixed(3)}</div>
+                                            <div
+                                                className={
+                                                    optimizedStdDev.value &&
+                                                    Number(linearizedResult.value.std_deviation.toFixed(4)) <=
+                                                        optimizedStdDev.value
+                                                        ? 'flex gap-4 font-semibold text-emerald-600'
+                                                        : 'flex gap-4 text-muted-foreground'
+                                                }
+                                            >
+                                                <div>
+                                                    MOT_THST_EXPO: {params.value.MOT_THST_EXPO.toFixed(3)}
+                                                </div>
+                                                <div>
+                                                    MOT_THST_HOVER:{' '}
+                                                    {hoverParams.value.MOT_THST_HOVER.toFixed(3)}
+                                                </div>
                                             </div>
-                                            <div className={optimizedStdDev.value && Number(linearizedResult.value.std_deviation.toFixed(3)) <= optimizedStdDev.value 
-                                                ? 'text-emerald-600 font-semibold' 
-                                                : 'text-muted-foreground'
-                                            }>
-                                                StdDev: {linearizedResult.value.std_deviation.toFixed(3)}
-                                                {optimizedStdDev.value && Number(linearizedResult.value.std_deviation.toFixed(3)) <= optimizedStdDev.value && ' (optimal)'}
+                                            <div
+                                                className={
+                                                    optimizedStdDev.value &&
+                                                    Number(linearizedResult.value.std_deviation.toFixed(4)) <=
+                                                        optimizedStdDev.value
+                                                        ? 'font-semibold text-emerald-600'
+                                                        : 'text-muted-foreground'
+                                                }
+                                            >
+                                                StdDev: {linearizedResult.value.std_deviation.toFixed(4)}
+                                                {optimizedStdDev.value &&
+                                                    Number(linearizedResult.value.std_deviation.toFixed(4)) <=
+                                                        optimizedStdDev.value &&
+                                                    ' (optimal)'}
                                             </div>
                                         </div>
                                     </div>
