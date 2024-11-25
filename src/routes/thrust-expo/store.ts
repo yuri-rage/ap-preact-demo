@@ -69,6 +69,7 @@ export const thrustDataRows = signal<ThrustData[]>(
         .map(() => ({ ...EMPTY_ROW }))
 );
 export const shouldOptimize = signal(true);
+export const optimizedStdDev = signal<number | null>(null);
 
 /**
  * simple memoization helper for expensive calculations
@@ -273,6 +274,7 @@ export const linearizedResult = computed(() => {
         if (result.expo !== undefined && !isNaN(result.expo)) {
             shouldOptimize.value = false;
             params.value.MOT_THST_EXPO = Number(result.expo.toFixed(3));
+            optimizedStdDev.value = Number(result.std_deviation.toFixed(3));
         }
 
         updateHoverThrottle(result.corrected_thrust);
