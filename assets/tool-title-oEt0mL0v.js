@@ -1,0 +1,1 @@
+import{u as e}from"./index-_4RPVSJw.js";const t=({title:l,children:o})=>e("div",{className:"flex max-w-screen-xl flex-col gap-4 p-3 pb-6",children:[e("span",{className:"text-3xl font-semibold",children:l}),e("div",{className:"text-muted-foreground",children:o})]});export{t as T};
