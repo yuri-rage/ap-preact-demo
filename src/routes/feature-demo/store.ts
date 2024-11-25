@@ -1,7 +1,10 @@
-import { signal, computed, effect } from '@preact/signals';
+import { signal } from '@preact/signals';
+
+
 
 import { ColumnConfig } from '@/components/numeric-data-grid';
-import { loadParams, ParamValue, createParamSignal } from '@/components/param-grid';
+import { loadParams, ParamValue, createParamSignal, initializeParamSignal } from '@/components/param-grid';
+
 
 /**
  * demo page store
@@ -100,9 +103,7 @@ export const initializeParams = async () => {
     try {
         const result = await loadParams(Object.keys(PARAMS), PARAMS, READ_ONLY_STATES, CONSTRAINED_STATES);
         paramConfig.value = result;
-        params.value = Object.fromEntries(
-            result.map(param => [param.Name, Number(param.Value)])
-        );
+        params.value = initializeParamSignal(result);
         isParamGridLoading.value = false;
     } catch (error) {
         console.error('Failed to load parameters:', error);
