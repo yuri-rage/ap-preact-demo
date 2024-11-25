@@ -57,19 +57,16 @@ export const CONSTRAINED_STATES = {
     MOT_THST_EXPO: false,
 } as const;
 
-export const paramConfig = signal<ParamValue[]>([]);
-export const params = createParamSignal();
-export const hoverParamConfig = signal<ParamValue[]>([]);
-export const hoverParams = createParamSignal();
-export const isParamGridLoading = signal(true);
-export const isHoverParamGridLoading = signal(true);
-export const thrustDataRows = signal<ThrustData[]>(
-    Array(10)
-        .fill(null)
-        .map(() => ({ ...EMPTY_ROW }))
-);
-export const shouldOptimize = signal(true);
-export const optimizedStdDev = signal<number | null>(null);
+/**
+ * normalizes a value between a min and max range
+ * @param rawValue - the value to normalize
+ * @param min - minimum value of the range
+ * @param max - maximum value of the range
+ * @returns normalized value between min and max
+ */
+const normalize = (rawValue: number, min: number, max: number) => {
+    return min + (max - min) * rawValue;
+};
 
 /**
  * simple memoization helper for expensive calculations
@@ -82,12 +79,9 @@ const memoize = <T extends (...args: any[]) => any>(
     getKey: (...args: Parameters<T>) => string = (...args) => JSON.stringify(args)
 ): T => {
     const cache = new Map<string, ReturnType<T>>();
-
     return ((...args: Parameters<T>) => {
         const key = getKey(...args);
-        if (cache.has(key)) {
-            return cache.get(key);
-        }
+        if (cache.has(key)) return cache.get(key);
         const result = fn(...args);
         cache.set(key, result);
         return result;
@@ -95,14 +89,17 @@ const memoize = <T extends (...args: any[]) => any>(
 };
 
 /**
- * normalizes a value between a min and max range
- * @param rawValue - the value to normalize
- * @param min - minimum value of the range
- * @param max - maximum value of the range
- * @returns normalized value between min and max
+ * type guard for thrust data validation
  */
-const normalize = (rawValue: number, min: number, max: number) => {
-    return min + (max - min) * rawValue;
+const isValidThrustData = (data: unknown): data is ThrustData => {
+    if (!data || typeof data !== 'object') return false;
+    const d = data as ThrustData;
+    return (
+        typeof d.pwm === 'number' &&
+        typeof d.thrust === 'number' &&
+        typeof d.voltage === 'number' &&
+        typeof d.current === 'number'
+    );
 };
 
 /**
@@ -116,6 +113,25 @@ const cloneExampleData = (): ThrustData[] =>
         voltage: row.voltage,
         current: row.current,
     }));
+
+const memoizedGetCorrectedThrust = memoize(get_corrected_thrust);
+const memoizedGetOptimizedExpo = memoize(get_optimized_expo);
+const memoizedLinearInterp = memoize(linear_interp);
+
+export const paramConfig = signal<ParamValue[]>([]);
+export const params = createParamSignal();
+export const hoverParamConfig = signal<ParamValue[]>([]);
+export const hoverParams = createParamSignal();
+export const isParamGridLoading = signal(true);
+export const isHoverParamGridLoading = signal(true);
+export const thrustDataRows = signal<ThrustData[]>(
+    Array(10)
+        .fill(null)
+        .map(() => ({ ...EMPTY_ROW }))
+);
+const lastParamsKey = signal<string | null>(null);
+export const shouldOptimize = signal(true);
+export const optimizedStdDev = signal<number | null>(null);
 
 /**
  * computed signal for the maximum thrust value in the data
@@ -148,20 +164,6 @@ export const hasValidData = computed(() => {
 });
 
 /**
- * type guard for thrust data validation
- */
-const isValidThrustData = (data: unknown): data is ThrustData => {
-    if (!data || typeof data !== 'object') return false;
-    const d = data as ThrustData;
-    return (
-        typeof d.pwm === 'number' &&
-        typeof d.thrust === 'number' &&
-        typeof d.voltage === 'number' &&
-        typeof d.current === 'number'
-    );
-};
-
-/**
  * safely handles data changes with validation
  */
 export const onDataChange = (newRows: ThrustData[]) => {
@@ -190,17 +192,11 @@ const updateHoverThrottle = (correctedThrust: number[]) => {
     }
 };
 
-/**
- * populates the page with example data
- */
 export const showExampleData = () => {
     onDataChange(cloneExampleData());
     hoverParams.value['All-up weight (AUW)'] = 2.5;
 };
 
-/**
- * resets all parameters to their initial values in a single batch update
- */
 export const resetAll = () => {
     onDataChange(
         Array(10)
@@ -218,10 +214,6 @@ export const resetAll = () => {
     hoverParams.value.MOT_THST_HOVER = 0;
 };
 
-/**
- * computed signal for raw thrust plot data
- * returns array of plotly data points for measured thrust values
- */
 export const thrustPlotData = computed<Partial<PlotData>[]>(() => {
     if (!hasValidData.value) return [];
 
@@ -244,16 +236,10 @@ export const thrustPlotData = computed<Partial<PlotData>[]>(() => {
     ];
 });
 
-const memoizedGetCorrectedThrust = memoize(get_corrected_thrust);
-const memoizedGetOptimizedExpo = memoize(get_optimized_expo);
-
-/**
- * computed signal for linearized thrust calculations
- * handles optimization of expo value and updates hover throttle
- * @returns object containing corrected thrust values, gradient, and optimization results
- */
 export const linearizedResult = computed(() => {
     if (!hasValidData.value) return null;
+
+    shouldTriggerOptimization.value;
 
     const data = {
         pwm: thrustDataRows.value.map((row) => row.pwm),
@@ -274,7 +260,7 @@ export const linearizedResult = computed(() => {
         if (result.expo !== undefined && !isNaN(result.expo)) {
             shouldOptimize.value = false;
             params.value.MOT_THST_EXPO = Number(result.expo.toFixed(3));
-            optimizedStdDev.value = Number(result.std_deviation.toFixed(3));
+            optimizedStdDev.value = Number(result.std_deviation.toFixed(4));
         }
 
         updateHoverThrottle(result.corrected_thrust);
@@ -307,7 +293,7 @@ export const thrustErrorPlotData = computed<Partial<PlotData>[]>(() => {
         {
             x: array_scale(array_offset(ACTUATOR_TEST_VALUES.slice(0, -1), ACTUATOR_TEST_STEP * 0.5), 100.0),
             y: linearizedResult.value.gradient,
-            name: `Linearized Thrust<br>Std dev: ${linearizedResult.value.std_deviation.toFixed(3)}`,
+            name: `Linearized Thrust<br>Std dev: ${linearizedResult.value.std_deviation.toFixed(4)}`,
             line: { color: 'indianred' },
         },
     ];
@@ -346,13 +332,6 @@ export const thrustErrorPlotLayout = computed<Partial<Layout>>(() => {
     };
 });
 
-const memoizedLinearInterp = memoize(linear_interp);
-
-/**
- * computed signal for thrust expo plot data
- * returns array of plotly data points showing measured vs linearized thrust,
- * ideal gradient, and hover throttle marker if applicable
- */
 export const thrustExpoPlotData = computed<Partial<PlotData>[]>(() => {
     if (!linearizedResult.value) return [];
 
@@ -372,12 +351,11 @@ export const thrustExpoPlotData = computed<Partial<PlotData>[]>(() => {
     const uncorrected_thrust = memoizedLinearInterp(data.thrust, uncorrected_actuator, ACTUATOR_TEST_VALUES);
     const actuator_pct = array_scale(ACTUATOR_TEST_VALUES, 100);
 
-    // calculate ideal linear thrust line starting from min thrust
     const maxThrust = Math.max(...linearizedResult.value.corrected_thrust);
-    const minThrust = linearizedResult.value.corrected_thrust[0]; // thrust at MOT_SPIN_MIN
+    const minThrust = linearizedResult.value.corrected_thrust[0];
     const thrustRange = maxThrust - minThrust;
-    
-    const idealThrust = actuator_pct.map(pct => minThrust + (thrustRange * pct) / 100);
+
+    const idealThrust = actuator_pct.map((pct) => minThrust + (thrustRange * pct) / 100);
 
     const plotData: Partial<PlotData>[] = [
         {
@@ -410,9 +388,9 @@ export const thrustExpoPlotData = computed<Partial<PlotData>[]>(() => {
             name: 'THST_HOVER',
             mode: 'markers',
             marker: {
-                size: 8,
-                symbol: 'circle',
-                color: 'green',
+                size: 12,
+                symbol: 'diamond',
+                color: '#059669',
             },
         });
     }
@@ -420,9 +398,6 @@ export const thrustExpoPlotData = computed<Partial<PlotData>[]>(() => {
     return plotData;
 });
 
-/**
- * computed signal for normalized PWM values with caching
- */
 export const normalizedPWMValues = computed(() => {
     const { MOT_PWM_MIN, MOT_PWM_MAX } = params.value;
     return {
@@ -432,11 +407,6 @@ export const normalizedPWMValues = computed(() => {
     };
 });
 
-/**
- * computed signal for thrust plot layout
- * returns plotly layout configuration with motor parameter indicators
- * and appropriate axis ranges
- */
 export const thrustPlotLayout = computed<Partial<Layout>>(() => {
     if (paramConfig.value.length === 0) {
         return {
@@ -468,10 +438,6 @@ export const thrustPlotLayout = computed<Partial<Layout>>(() => {
     };
 });
 
-/**
- * computed signal for thrust expo plot layout
- * returns plotly layout configuration for thrust expo visualization
- */
 export const thrustExpoPlotLayout = computed<Partial<Layout>>(() => ({
     xaxis: {
         title: 'Throttle (%)',
@@ -485,13 +451,37 @@ export const thrustExpoPlotLayout = computed<Partial<Layout>>(() => ({
 }));
 
 /**
- * initializes motor parameters from configuration
- * sets up parameter grid with initial values and constraints
+ * computed signal to check if optimization should be triggered
+ * allows for manual edits of MOT_THST_EXPO to see the effects on the plots
  */
+export const shouldTriggerOptimization = computed(() => {
+    const spinMin = params.value.MOT_SPIN_MIN;
+    const spinMax = params.value.MOT_SPIN_MAX;
+    const pwmMin = params.value.MOT_PWM_MIN;
+    const pwmMax = params.value.MOT_PWM_MAX;
+
+    const paramsKey = `${spinMin}-${spinMax}-${pwmMin}-${pwmMax}`;
+
+    if (lastParamsKey.value !== paramsKey) {
+        lastParamsKey.value = paramsKey;
+        shouldOptimize.value = true;
+        return true;
+    }
+
+    return false;
+});
+
 loadParams(Object.keys(MOTOR_PARAMS), MOTOR_PARAMS, READ_ONLY_STATES, CONSTRAINED_STATES)
     .then((result) => {
-        paramConfig.value = result;
-        params.value = initializeParamSignal(result);
+        const resultWithIncrements = result.map((param) => {
+            if (param.Name === 'MOT_THST_EXPO') {
+                return { ...param, Increment: 0.001 };
+            }
+            return param;
+        });
+
+        paramConfig.value = resultWithIncrements;
+        params.value = initializeParamSignal(resultWithIncrements);
     })
     .catch((error) => {
         console.error('failed to load thrust expo parameters:', error);
