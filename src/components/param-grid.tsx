@@ -40,6 +40,7 @@ export interface ParamValue {
     };
     ReadOnly?: boolean;
     Constrained?: boolean;
+    Increment?: number;
 }
 
 interface ParamGridProps {
@@ -107,6 +108,7 @@ export const convertParamToGridFormat = async (
             Bitmask: paramDef.Bitmask,
             ReadOnly: forceReadOnly || paramDef.ReadOnly === 'True',
             Constrained: forceConstrained,
+            Increment: paramDef.Increment ? parseFloat(paramDef.Increment) : undefined,
         };
     } catch (error) {
         console.error(`Failed to load parameter group for ${prefix}:`, error);
@@ -114,10 +116,15 @@ export const convertParamToGridFormat = async (
     }
 };
 
-const getDefaultIncrement = (range?: { low: number; high: number }) => {
+const getDefaultIncrement = (range?: { low: number; high: number }, paramDef?: ParamDefinition) => {
+    if (paramDef?.Increment) {
+        return parseFloat(paramDef.Increment);
+    }
+
     if (!range) return 0.1; // default if no range
 
     const span = range.high - range.low;
+    if (span <= 0.5) return 0.001;
     if (span <= 2) return 0.01;
     if (span <= 10) return 0.1;
     return 1;
@@ -165,7 +172,7 @@ const createColumnDefs = (variant: 'default' | 'narrow' = 'default'): ColDef[] =
                 }
 
                 const validateAndSetValue = (newValue: number) => {
-                    const { Range, Constrained } = params.data;
+                    const { Range, Constrained, Increment } = params.data;
                     if (!Range || !Constrained) {
                         params.setValue(newValue);
                         return;
@@ -178,7 +185,7 @@ const createColumnDefs = (variant: 'default' | 'narrow' = 'default'): ColDef[] =
                 };
 
                 const increment = () => {
-                    const step = getDefaultIncrement(params.data.Range);
+                    const step = params.data.Increment || getDefaultIncrement(params.data.Range);
                     const precision = step.toString().split('.')[1]?.length || 0;
                     const newValue =
                         Math.round((parseFloat(params.value) + step) * 10 ** precision) / 10 ** precision;
@@ -186,7 +193,7 @@ const createColumnDefs = (variant: 'default' | 'narrow' = 'default'): ColDef[] =
                 };
 
                 const decrement = () => {
-                    const step = getDefaultIncrement(params.data.Range);
+                    const step = params.data.Increment || getDefaultIncrement(params.data.Range);
                     const precision = step.toString().split('.')[1]?.length || 0;
                     const newValue =
                         Math.round((parseFloat(params.value) - step) * 10 ** precision) / 10 ** precision;
@@ -592,6 +599,7 @@ export const ParamGrid = ({
                 suppressClickEdit: true,
                 stopEditingWhenCellsLoseFocus: true,
                 getRowId: (params: { data: ParamValue }) => params.data.Name,
+                context: { params },
                 defaultColDef: {
                     ...DEFAULT_COLUMN_STYLE,
                     cellClass: 'cursor-cell',
@@ -860,17 +868,22 @@ export const loadParams = async (
     paramKeys: string[],
     initialValues?: Record<string, number>,
     forceReadOnlyStates?: Record<string, boolean>,
-    forceConstrainedStates?: Record<string, boolean>
+    forceConstrainedStates?: Record<string, boolean>,
+    incrementValues?: Record<string, number>
 ): Promise<ParamValue[]> => {
     const results = await Promise.all(
-        paramKeys.map((key) =>
-            convertParamToGridFormat(
+        paramKeys.map(async (key) => {
+            const param = await convertParamToGridFormat(
                 key,
                 initialValues?.[key],
                 forceReadOnlyStates?.[key] ?? false,
                 forceConstrainedStates?.[key] ?? true
-            )
-        )
+            );
+            if (param && incrementValues?.[key]) {
+                param.Increment = incrementValues[key];
+            }
+            return param;
+        })
     );
 
     return results.filter((p): p is NonNullable<typeof p> => p !== null);
