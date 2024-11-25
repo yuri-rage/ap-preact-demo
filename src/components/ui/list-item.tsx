@@ -21,10 +21,10 @@ export const ListItem = React.forwardRef<
                     {...props}
                 >
                     <div className='flex items-center gap-3'>
-                        <div className='w-16 min-h-[4rem] flex-shrink-0 flex items-center'>
+                        <div className='flex min-h-[4rem] w-16 flex-shrink-0 items-center'>
                             {icon && <img src={icon} alt='' className='h-full w-full' />}
                         </div>
-                        <div className='flex flex-col justify-center min-h-[4rem] gap-1'>
+                        <div className='flex min-h-[4rem] flex-col justify-center gap-1'>
                             <div className='text-sm font-medium'>{title}</div>
                             <p className='text-sm text-muted-foreground'>{children}</p>
                         </div>
